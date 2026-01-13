@@ -552,37 +552,30 @@ with st.expander("Run preset scenarios (sanity check)"):
 
 if submitted:
     inputs = {
-        age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1, key="age")
-        sex = st.selectbox("Sex", SEX_OPTIONS, index=0, key="sex")
-        pregnant = st.selectbox("Pregnant or could be pregnant?", PREGNANCY_OPTIONS, index=2, key="pregnant")
-        
-        chief = st.selectbox("Main issue today", CHIEF_COMPLAINTS, index=5, key="chief_complaint")
-        onset = st.selectbox("When did this start?", ONSET_OPTIONS, index=2, key="onset")
-        severity = st.slider("How severe is it right now? (0–10)", 0, 10, 4, key="severity_0_10")
-        trend = st.selectbox("Getting better or worse?", TREND_OPTIONS, index=1, key="trend")
-        happened_before = st.selectbox("Has this same problem happened before?", HAPPENED_BEFORE_OPTIONS, index=2, key="happened_before")
-        fever = st.selectbox("Do you currently have a fever (≥100.4°F / 38°C)?", FEVER_OPTIONS, index=2, key="fever")
-        
-        red_flags = st.multiselect("Any of these right now?", RED_FLAGS, key="red_flags")
-        conditions = st.multiselect("Do you have any of these conditions?", RISK_CONDITIONS, default=["None of the above"], key="conditions")
-        
-        temp_f_raw = st.text_input("Temperature (°F)", value="", key="temp_f_raw")
-        hr_raw = st.text_input("Heart rate (bpm)", value="", key="hr_raw")
-        spo2_raw = st.text_input("Oxygen saturation SpO₂ (%)", value="", key="spo2_raw")
-        
-        temp_f = parse_optional_float(temp_f_raw)
-        hr = parse_optional_int(hr_raw)
-        spo2 = parse_optional_int(spo2_raw)
-        
-        pcp_access = st.selectbox("Do you have a primary care doctor?", ["Yes", "No"], index=0, key="pcp_access")
-        urgent_access = st.selectbox("Can you get to urgent care today if needed?", ["Yes", "No"], index=0, key="urgent_access")
+        "age": int(age),
+        "sex": sex,
+        "pregnant": pregnant,
+        "chief_complaint": chief,
+        "onset": onset,
+        "severity_0_10": int(severity),
+        "trend": trend,
+        "happened_before": happened_before,
+        "fever": fever,
+        "red_flags": red_flags,
+        "conditions": conditions,
+        # optional vitals (already parsed from *_raw fields inside the form)
+        "temp_f": temp_f,
+        "hr": hr,
+        "spo2": spo2,
+        "pcp_access": pcp_access,
+        "urgent_access": urgent_access,
+        # injury fields (defaults to None / [] if not an injury)
+        "injury_type": injury_type,
+        "injury_location": injury_location,
+        "injury_mechanism": injury_mechanism,
+        "injury_flags": injury_flags,
+    }
 
-        injury_type = st.selectbox(..., key="injury_type")
-        injury_location = st.selectbox(..., key="injury_location")
-        injury_mechanism = st.selectbox(..., key="injury_mechanism")
-        injury_flags = st.multiselect(..., key="injury_flags")
-
-            }
     result = route_patient(inputs)
 
     st.subheader("Routing Result")
@@ -609,4 +602,3 @@ if submitted:
         st.json(inputs)
 
 st.caption("Next: add an LLM explanation layer that only summarizes and explains—never routes.")
-
