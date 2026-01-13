@@ -447,56 +447,90 @@ PRESETS = {
     },
 }
 
+# --- Quick Test Presets ---
 cols = st.columns(4)
 preset_names = list(PRESETS.keys())
+
 for i, name in enumerate(preset_names):
     if cols[i % 4].button(name):
         apply_preset(PRESETS[name])
         st.toast(f"Loaded preset: {name}", icon="✅")
+        st.rerun()
 
+# --- Intake Form (starts AFTER presets) ---
 with st.form("triage_form"):
 
     st.subheader("Step 1 — Basics")
     col1, col2 = st.columns(2)
     with col1:
-        age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1)
-        sex = st.selectbox("Sex", SEX_OPTIONS, index=0)
+        age = st.number_input(
+            "Age (years)",
+            min_value=0,
+            max_value=120,
+            value=30,
+            step=1,
+            key="age",
+        )
+        sex = st.selectbox("Sex", SEX_OPTIONS, index=0, key="sex")
     with col2:
-        pregnant = st.selectbox("Pregnant or could be pregnant?", PREGNANCY_OPTIONS, index=2)
+        pregnant = st.selectbox(
+            "Pregnant or could be pregnant?",
+            PREGNANCY_OPTIONS,
+            index=2,
+            key="pregnant",
+        )
+
+    # ... keep the rest of your form fields here ...
+
 
     st.subheader("Step 2 — Symptoms")
-    chief = st.selectbox("Main issue today", CHIEF_COMPLAINTS, index=5)
-    onset = st.selectbox("When did this start?", ONSET_OPTIONS, index=2)
-    severity = st.slider("How severe is it right now? (0–10)", min_value=0, max_value=10, value=4)
-    trend = st.selectbox("Getting better or worse?", TREND_OPTIONS, index=1)
-    happened_before = st.selectbox("Has this same problem happened before?", HAPPENED_BEFORE_OPTIONS, index=2)
-    fever = st.selectbox("Do you currently have a fever (≥100.4°F / 38°C)?", FEVER_OPTIONS, index=2)
+    chief = st.selectbox("Main issue today", CHIEF_COMPLAINTS, index=5, key="chief_complaint")
+    onset = st.selectbox("When did this start?", ONSET_OPTIONS, index=2, key="onset")
+    severity = st.slider(
+        "How severe is it right now? (0–10)", min_value=0, max_value=10, value=4, key="severity_0_10"
+    )
+    trend = st.selectbox("Getting better or worse?", TREND_OPTIONS, index=1, key="trend")
+    happened_before = st.selectbox(
+        "Has this same problem happened before?", HAPPENED_BEFORE_OPTIONS, index=2, key="happened_before"
+    )
+    fever = st.selectbox(
+        "Do you currently have a fever (≥100.4°F / 38°C)?", FEVER_OPTIONS, index=2, key="fever"
+    )
 
     st.subheader("Step 3 — Red Flags")
-    red_flags = st.multiselect("Any of these right now?", RED_FLAGS)
+    red_flags = st.multiselect("Any of these right now?", RED_FLAGS, key="red_flags")
 
     st.subheader("Step 4 — Medical History")
     conditions = st.multiselect(
         "Do you have any of these conditions?",
         RISK_CONDITIONS,
         default=["None of the above"],
+        key="conditions",
     )
 
     st.subheader("Step 5 — Vitals (optional)")
     col3, col4, col5 = st.columns(3)
     with col3:
-        temp_f = parse_optional_float(st.text_input("Temperature (°F)", value=""))
+        temp_f_raw = st.text_input("Temperature (°F)", value="", key="temp_f_raw")
     with col4:
-        hr = parse_optional_int(st.text_input("Heart rate (bpm)", value=""))
+        hr_raw = st.text_input("Heart rate (bpm)", value="", key="hr_raw")
     with col5:
-        spo2 = parse_optional_int(st.text_input("Oxygen saturation SpO₂ (%)", value=""))
+        spo2_raw = st.text_input("Oxygen saturation SpO₂ (%)", value="", key="spo2_raw")
+
+    temp_f = parse_optional_float(temp_f_raw)
+    hr = parse_optional_int(hr_raw)
+    spo2 = parse_optional_int(spo2_raw)
 
     st.subheader("Step 6 — Access (optional)")
     col6, col7 = st.columns(2)
     with col6:
-        pcp_access = st.selectbox("Do you have a primary care doctor?", ["Yes", "No"], index=0)
+        pcp_access = st.selectbox(
+            "Do you have a primary care doctor?", ["Yes", "No"], index=0, key="pcp_access"
+        )
     with col7:
-        urgent_access = st.selectbox("Can you get to urgent care today if needed?", ["Yes", "No"], index=0)
+        urgent_access = st.selectbox(
+            "Can you get to urgent care today if needed?", ["Yes", "No"], index=0, key="urgent_access"
+        )
 
     # Injury conditional section (defaults ensure variables exist even when not selected)
     injury_type = None
@@ -508,14 +542,21 @@ with st.form("triage_form"):
         st.subheader("Injury / Wound Details")
         col8, col9 = st.columns(2)
         with col8:
-            injury_type = st.selectbox("What type of injury is this?", INJURY_TYPES, index=0)
-            injury_location = st.selectbox("Where is the injury?", INJURY_LOCATIONS, index=0)
+            injury_type = st.selectbox(
+                "What type of injury is this?", INJURY_TYPES, index=0, key="injury_type"
+            )
+            injury_location = st.selectbox(
+                "Where is the injury?", INJURY_LOCATIONS, index=0, key="injury_location"
+            )
         with col9:
-            injury_mechanism = st.selectbox("How did it happen?", INJURY_MECHANISMS, index=0)
-        injury_flags = st.multiselect("Are any of these present?", INJURY_FLAGS)
+            injury_mechanism = st.selectbox(
+                "How did it happen?", INJURY_MECHANISMS, index=0, key="injury_mechanism"
+            )
+        injury_flags = st.multiselect("Are any of these present?", INJURY_FLAGS, key="injury_flags")
 
     st.divider()
     submitted = st.form_submit_button("Run Routing")
+
 
 with st.expander("Run preset scenarios (sanity check)"):
     if st.button("Run all presets"):
