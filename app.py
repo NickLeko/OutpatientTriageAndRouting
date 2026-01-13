@@ -17,7 +17,11 @@ import streamlit as st
 
 import os
 from typing import Any
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
 
 # -----------------------------
 # Constants / Options
@@ -172,6 +176,14 @@ def parse_optional_int(s: str) -> Optional[int]:
         return None
 
 def llm_enabled() -> bool:
+    """
+    LLM is enabled only if:
+    - OpenAI SDK is installed
+    - OPENAI_API_KEY is present in env
+    """
+    if OpenAI is None:
+        return False
+
     return bool(os.getenv("OPENAI_API_KEY", "").strip())
 
 def generate_llm_explanation(prompt: str) -> str:
