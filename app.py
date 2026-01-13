@@ -133,6 +133,14 @@ class RoutingResult:
 def _is_checked(items: List[str]) -> bool:
     return bool(items) and len(items) > 0
 
+def apply_preset(preset: Dict) -> None:
+    """
+    Write preset values into Streamlit session_state so widgets update.
+    IMPORTANT: keys must match widget `key=` values.
+    """
+    for k, v in preset.items():
+        st.session_state[k] = v
+
 
 def normalize_conditions(conditions: List[str]) -> List[str]:
     # If "None of the above" selected, treat as no conditions.
@@ -345,6 +353,107 @@ with st.expander("Safety & Scope (read)", expanded=True):
 - If you believe you are experiencing an emergency, **call local emergency services**.
 """
     )
+
+st.subheader("Quick Test Presets")
+
+PRESETS = {
+    "Person A — ED (red flag chest pain)": {
+        "age": 58,
+        "sex": "Male",
+        "pregnant": "Not applicable",
+        "chief_complaint": "Chest pain / pressure",
+        "onset": "6–24 hours",
+        "severity_0_10": 8,
+        "trend": "Worse",
+        "happened_before": "No — first time",
+        "fever": "No",
+        "red_flags": ["Severe chest pain/pressure"],
+        "conditions": ["Heart disease / prior heart attack"],
+        "temp_f_raw": "",
+        "hr_raw": "",
+        "spo2_raw": "",
+        "pcp_access": "Yes",
+        "urgent_access": "Yes",
+        "injury_type": None,
+        "injury_location": None,
+        "injury_mechanism": None,
+        "injury_flags": [],
+    },
+    "Person B — Urgent Care (fever + immunocompromised)": {
+        "age": 45,
+        "sex": "Female",
+        "pregnant": "No",
+        "chief_complaint": "Fever / infection symptoms",
+        "onset": "1–3 days",
+        "severity_0_10": 6,
+        "trend": "Worse",
+        "happened_before": "Not sure",
+        "fever": "Yes",
+        "red_flags": [],
+        "conditions": ["Immunocompromised (chemo, transplant, HIV, long-term steroids)"],
+        "temp_f_raw": "101.6",
+        "hr_raw": "105",
+        "spo2_raw": "96",
+        "pcp_access": "Yes",
+        "urgent_access": "Yes",
+        "injury_type": None,
+        "injury_location": None,
+        "injury_mechanism": None,
+        "injury_flags": [],
+    },
+    "Person C — Self-care (mild cough)": {
+        "age": 29,
+        "sex": "Male",
+        "pregnant": "Not applicable",
+        "chief_complaint": "Cough / sore throat",
+        "onset": "6–24 hours",
+        "severity_0_10": 2,
+        "trend": "Same",
+        "happened_before": "Yes — similar symptoms before",
+        "fever": "Don’t know / can’t check",
+        "red_flags": [],
+        "conditions": ["None of the above"],
+        "temp_f_raw": "",
+        "hr_raw": "",
+        "spo2_raw": "",
+        "pcp_access": "Yes",
+        "urgent_access": "Yes",
+        "injury_type": None,
+        "injury_location": None,
+        "injury_mechanism": None,
+        "injury_flags": [],
+    },
+    "Person D — Injury Urgent Care (can’t bear weight)": {
+        "age": 33,
+        "sex": "Male",
+        "pregnant": "Not applicable",
+        "chief_complaint": "Injury / wound",
+        "onset": "< 6 hours",
+        "severity_0_10": 6,
+        "trend": "Worse",
+        "happened_before": "No — first time",
+        "fever": "No",
+        "red_flags": [],
+        "conditions": ["None of the above"],
+        "temp_f_raw": "",
+        "hr_raw": "",
+        "spo2_raw": "",
+        "pcp_access": "No",
+        "urgent_access": "Yes",
+        "injury_type": "Joint (ankle, knee, shoulder, wrist, etc.)",
+        "injury_location": "Ankle",
+        "injury_mechanism": "Sports / exercise",
+        "injury_flags": ["Unable to bear weight or use limb"],
+    },
+}
+
+cols = st.columns(4)
+preset_names = list(PRESETS.keys())
+for i, name in enumerate(preset_names):
+    if cols[i % 4].button(name):
+        apply_preset(PRESETS[name])
+        st.toast(f"Loaded preset: {name}", icon="✅")
+
 with st.form("triage_form"):
 
     st.subheader("Step 1 — Basics")
@@ -408,31 +517,71 @@ with st.form("triage_form"):
     st.divider()
     submitted = st.form_submit_button("Run Routing")
 
+    with st.expander("Run preset scenarios (sanity check)"):
+    if st.button("Run all presets"):
+        for name, preset in PRESETS.items():
+            # Convert preset into the inputs dict route_patient expects
+            inputs = {
+                "age": int(preset["age"]),
+                "sex": preset["sex"],
+                "pregnant": preset["pregnant"],
+                "chief_complaint": preset["chief_complaint"],
+                "onset": preset["onset"],
+                "severity_0_10": int(preset["severity_0_10"]),
+                "trend": preset["trend"],
+                "happened_before": preset["happened_before"],
+                "fever": preset["fever"],
+                "red_flags": preset.get("red_flags", []),
+                "conditions": preset.get("conditions", []),
+                "temp_f": parse_optional_float(preset.get("temp_f_raw", "")),
+                "hr": parse_optional_int(preset.get("hr_raw", "")),
+                "spo2": parse_optional_int(preset.get("spo2_raw", "")),
+                "pcp_access": preset.get("pcp_access", "Yes"),
+                "urgent_access": preset.get("urgent_access", "Yes"),
+                "injury_type": preset.get("injury_type"),
+                "injury_location": preset.get("injury_location"),
+                "injury_mechanism": preset.get("injury_mechanism"),
+                "injury_flags": preset.get("injury_flags", []),
+            }
+            res = route_patient(inputs)
+            st.write(f"**{name}** → `{res.route}` ({res.urgency})")
+
+
+
+
 
 if submitted:
     inputs = {
-        "age": int(age),
-        "sex": sex,
-        "pregnant": pregnant,
-        "chief_complaint": chief,
-        "onset": onset,
-        "severity_0_10": int(severity),
-        "trend": trend,
-        "happened_before": happened_before,
-        "fever": fever,
-        "red_flags": red_flags,
-        "conditions": conditions,
-        "vitals": {"temp_f": temp_f, "hr": hr, "spo2": spo2},
-        "temp_f": temp_f,
-        "hr": hr,
-        "spo2": spo2,
-        "pcp_access": pcp_access,
-        "urgent_access": urgent_access,
-        "injury_type": injury_type,
-        "injury_location": injury_location,
-        "injury_mechanism": injury_mechanism,
-        "injury_flags": injury_flags,
-    }
+        age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1, key="age")
+        sex = st.selectbox("Sex", SEX_OPTIONS, index=0, key="sex")
+        pregnant = st.selectbox("Pregnant or could be pregnant?", PREGNANCY_OPTIONS, index=2, key="pregnant")
+        
+        chief = st.selectbox("Main issue today", CHIEF_COMPLAINTS, index=5, key="chief_complaint")
+        onset = st.selectbox("When did this start?", ONSET_OPTIONS, index=2, key="onset")
+        severity = st.slider("How severe is it right now? (0–10)", 0, 10, 4, key="severity_0_10")
+        trend = st.selectbox("Getting better or worse?", TREND_OPTIONS, index=1, key="trend")
+        happened_before = st.selectbox("Has this same problem happened before?", HAPPENED_BEFORE_OPTIONS, index=2, key="happened_before")
+        fever = st.selectbox("Do you currently have a fever (≥100.4°F / 38°C)?", FEVER_OPTIONS, index=2, key="fever")
+        
+        red_flags = st.multiselect("Any of these right now?", RED_FLAGS, key="red_flags")
+        conditions = st.multiselect("Do you have any of these conditions?", RISK_CONDITIONS, default=["None of the above"], key="conditions")
+        
+        temp_f_raw = st.text_input("Temperature (°F)", value="", key="temp_f_raw")
+        hr_raw = st.text_input("Heart rate (bpm)", value="", key="hr_raw")
+        spo2_raw = st.text_input("Oxygen saturation SpO₂ (%)", value="", key="spo2_raw")
+        
+        temp_f = parse_optional_float(temp_f_raw)
+        hr = parse_optional_int(hr_raw)
+        spo2 = parse_optional_int(spo2_raw)
+        
+        pcp_access = st.selectbox("Do you have a primary care doctor?", ["Yes", "No"], index=0, key="pcp_access")
+        urgent_access = st.selectbox("Can you get to urgent care today if needed?", ["Yes", "No"], index=0, key="urgent_access")
+
+        injury_type = st.selectbox(..., key="injury_type")
+        injury_location = st.selectbox(..., key="injury_location")
+        injury_mechanism = st.selectbox(..., key="injury_mechanism")
+        injury_flags = st.multiselect(..., key="injury_flags")
+
 
     result = route_patient(inputs)
 
