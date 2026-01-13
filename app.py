@@ -18,6 +18,8 @@ import streamlit as st
 import os
 from typing import Any
 
+from openai import OpenAI
+
 # -----------------------------
 # Constants / Options
 # -----------------------------
@@ -173,6 +175,38 @@ def parse_optional_int(s: str) -> Optional[int]:
 def llm_enabled() -> bool:
     return bool(os.getenv("OPENAI_API_KEY", "").strip())
 
+def generate_llm_explanation(prompt: str) -> str:
+    """
+    Calls OpenAI to generate a patient-facing explanation.
+    Routing is already decided and MUST NOT be changed.
+    """
+    try:
+        client = OpenAI()  # reads OPENAI_API_KEY from env
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a healthcare navigation assistant. "
+                        "You do NOT diagnose or change routing decisions. "
+                        "You ONLY explain the already-decided route."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            temperature=0.3,
+            max_tokens=300,
+        )
+
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        return f"LLM explanation unavailable due to an error: {e}"
 
 def build_explanation_prompt(inputs: Dict[str, Any], routing: RoutingResult) -> str:
     """
@@ -693,8 +727,9 @@ if submitted:
             st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
         else:
             prompt = build_explanation_prompt(inputs, result)
-        explanation = generate_llm_explanation(prompt)
-        st.write(explanation)
+            explanation = generate_llm_explanation(prompt)
+            st.write(explanation)
+
 
 
 st.caption("Next: add an LLM explanation layer that only summarizes and explains—never routes.")
