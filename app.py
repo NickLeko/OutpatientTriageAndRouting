@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 import streamlit as st
 
+import os
+from typing import Any
 
 # -----------------------------
 # Constants / Options
@@ -168,6 +170,50 @@ def parse_optional_int(s: str) -> Optional[int]:
     except ValueError:
         return None
 
+def llm_enabled() -> bool:
+    return bool(os.getenv("OPENAI_API_KEY", "").strip())
+
+
+def build_explanation_prompt(inputs: Dict[str, Any], routing: RoutingResult) -> str:
+    """
+    Strict prompt: explanation only. Never override route.
+    """
+    # Keep input summary tight; avoid dumping full JSON into the prompt.
+    red_flags = inputs.get("red_flags", [])
+    conditions = inputs.get("conditions", [])
+    injury_flags = inputs.get("injury_flags", [])
+
+    return f"""
+You are a healthcare navigation assistant. You DO NOT provide diagnoses.
+You MUST NOT change or contradict the routing decision.
+
+Routing decision (FINAL): {routing.route}
+Urgency (FINAL): {routing.urgency}
+Rule-based reasons: {", ".join(routing.reasons) if routing.reasons else "None provided"}
+
+User inputs (structured):
+- Age: {inputs.get("age")}
+- Sex: {inputs.get("sex")}
+- Pregnant: {inputs.get("pregnant")}
+- Chief complaint: {inputs.get("chief_complaint")}
+- Onset: {inputs.get("onset")}
+- Severity (0-10): {inputs.get("severity_0_10")}
+- Trend: {inputs.get("trend")}
+- Happened before: {inputs.get("happened_before")}
+- Fever: {inputs.get("fever")}
+- Red flags selected: {red_flags if red_flags else "None"}
+- Conditions selected: {conditions if conditions else "None"}
+- Vitals (if known): temp_f={inputs.get("temp_f")}, hr={inputs.get("hr")}, spo2={inputs.get("spo2")}
+- Injury flags (if any): {injury_flags if injury_flags else "None"}
+
+Write a patient-facing explanation with these rules:
+1) Start with: "Recommended care: <ROUTE> (<URGENCY>)" exactly matching the FINAL route.
+2) Briefly explain why, using the rule-based reasons and user inputs (no new facts).
+3) Provide 3-6 bullet "Watch-outs" that should trigger escalation to the ED (generic, safe).
+4) Provide 3-6 bullet "What to do next" steps appropriate for the FINAL route (no prescriptions; OK: OTC basics like hydration/rest).
+5) Include a short disclaimer: this is not medical advice and emergencies should call local emergency services.
+Keep it under 220 words.
+""".strip()
 
 # -----------------------------
 # Routing Logic 
@@ -641,5 +687,14 @@ if submitted:
 
     with st.expander("Debug: inputs JSON"):
         st.json(inputs)
+
+    with st.expander("LLM Explanation (optional)", expanded=True):
+        if not llm_enabled():
+            st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
+        else:
+            prompt = build_explanation_prompt(inputs, result)
+        explanation = generate_llm_explanation(prompt)
+        st.write(explanation)
+
 
 st.caption("Next: add an LLM explanation layer that only summarizes and explains—never routes.")
