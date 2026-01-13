@@ -517,7 +517,7 @@ with st.form("triage_form"):
     st.divider()
     submitted = st.form_submit_button("Run Routing")
 
-    with st.expander("Run preset scenarios (sanity check)"):
+with st.expander("Run preset scenarios (sanity check)"):
     if st.button("Run all presets"):
         for name, preset in PRESETS.items():
             # Convert preset into the inputs dict route_patient expects
