@@ -162,7 +162,7 @@ def parse_optional_int(s: str) -> Optional[int]:
 
 
 # -----------------------------
-# Routing Logic (Rules Decide)
+# Routing Logic 
 # -----------------------------
 def route_patient(inputs: Dict) -> RoutingResult:
     """
@@ -309,6 +309,31 @@ def route_patient(inputs: Dict) -> RoutingResult:
 # Streamlit UI
 # -----------------------------
 st.set_page_config(page_title="Triage Routing MVP", page_icon="🩺", layout="centered")
+st.markdown(
+    """
+    <style>
+      /* Force the main app area to be scrollable on mobile/webviews */
+      html, body, [data-testid="stAppViewContainer"] {
+        height: 100%;
+        overflow: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      /* Streamlit sometimes wraps the main block in a container that can clip overflow */
+      [data-testid="stAppViewContainer"] > .main {
+        overflow: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      /* Reduce chances of scroll-jank with sticky headers */
+      header[data-testid="stHeader"] {
+        position: relative !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("🩺 Triage Routing MVP")
 st.caption("Rules-based routing. LLM explanation layer can be added later (must not override rules).")
 
@@ -320,64 +345,69 @@ with st.expander("Safety & Scope (read)", expanded=True):
 - If you believe you are experiencing an emergency, **call local emergency services**.
 """
     )
+with st.form("triage_form"):
 
-st.subheader("Step 1 — Basics")
-col1, col2 = st.columns(2)
-with col1:
-    age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1)
-    sex = st.selectbox("Sex", SEX_OPTIONS, index=0)
-with col2:
-    pregnant = st.selectbox("Pregnant or could be pregnant?", PREGNANCY_OPTIONS, index=2)
+    st.subheader("Step 1 — Basics")
+    col1, col2 = st.columns(2)
+    with col1:
+        age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1)
+        sex = st.selectbox("Sex", SEX_OPTIONS, index=0)
+    with col2:
+        pregnant = st.selectbox("Pregnant or could be pregnant?", PREGNANCY_OPTIONS, index=2)
 
-st.subheader("Step 2 — Symptoms")
-chief = st.selectbox("Main issue today", CHIEF_COMPLAINTS, index=5)
-onset = st.selectbox("When did this start?", ONSET_OPTIONS, index=2)
-severity = st.slider("How severe is it right now? (0–10)", min_value=0, max_value=10, value=4)
-trend = st.selectbox("Getting better or worse?", TREND_OPTIONS, index=1)
-happened_before = st.selectbox("Has this same problem happened before?", HAPPENED_BEFORE_OPTIONS, index=2)
-fever = st.selectbox("Do you currently have a fever (≥100.4°F / 38°C)?", FEVER_OPTIONS, index=2)
+    st.subheader("Step 2 — Symptoms")
+    chief = st.selectbox("Main issue today", CHIEF_COMPLAINTS, index=5)
+    onset = st.selectbox("When did this start?", ONSET_OPTIONS, index=2)
+    severity = st.slider("How severe is it right now? (0–10)", min_value=0, max_value=10, value=4)
+    trend = st.selectbox("Getting better or worse?", TREND_OPTIONS, index=1)
+    happened_before = st.selectbox("Has this same problem happened before?", HAPPENED_BEFORE_OPTIONS, index=2)
+    fever = st.selectbox("Do you currently have a fever (≥100.4°F / 38°C)?", FEVER_OPTIONS, index=2)
 
-st.subheader("Step 3 — Red Flags")
-red_flags = st.multiselect("Any of these right now?", RED_FLAGS)
+    st.subheader("Step 3 — Red Flags")
+    red_flags = st.multiselect("Any of these right now?", RED_FLAGS)
 
-st.subheader("Step 4 — Medical History")
-conditions = st.multiselect("Do you have any of these conditions?", RISK_CONDITIONS, default=["None of the above"])
+    st.subheader("Step 4 — Medical History")
+    conditions = st.multiselect(
+        "Do you have any of these conditions?",
+        RISK_CONDITIONS,
+        default=["None of the above"],
+    )
 
-st.subheader("Step 5 — Vitals (optional)")
-col3, col4, col5 = st.columns(3)
-with col3:
-    temp_f = parse_optional_float(st.text_input("Temperature (°F)", value=""))
-with col4:
-    hr = parse_optional_int(st.text_input("Heart rate (bpm)", value=""))
-with col5:
-    spo2 = parse_optional_int(st.text_input("Oxygen saturation SpO₂ (%)", value=""))
+    st.subheader("Step 5 — Vitals (optional)")
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        temp_f = parse_optional_float(st.text_input("Temperature (°F)", value=""))
+    with col4:
+        hr = parse_optional_int(st.text_input("Heart rate (bpm)", value=""))
+    with col5:
+        spo2 = parse_optional_int(st.text_input("Oxygen saturation SpO₂ (%)", value=""))
 
-st.subheader("Step 6 — Access (optional)")
-col6, col7 = st.columns(2)
-with col6:
-    pcp_access = st.selectbox("Do you have a primary care doctor?", ["Yes", "No"], index=0)
-with col7:
-    urgent_access = st.selectbox("Can you get to urgent care today if needed?", ["Yes", "No"], index=0)
+    st.subheader("Step 6 — Access (optional)")
+    col6, col7 = st.columns(2)
+    with col6:
+        pcp_access = st.selectbox("Do you have a primary care doctor?", ["Yes", "No"], index=0)
+    with col7:
+        urgent_access = st.selectbox("Can you get to urgent care today if needed?", ["Yes", "No"], index=0)
 
-# Injury conditional section
-injury_type = None
-injury_location = None
-injury_mechanism = None
-injury_flags: List[str] = []
+    # Injury conditional section (defaults ensure variables exist even when not selected)
+    injury_type = None
+    injury_location = None
+    injury_mechanism = None
+    injury_flags: List[str] = []
 
-if chief == "Injury / wound":
-    st.subheader("Injury / Wound Details")
-    col8, col9 = st.columns(2)
-    with col8:
-        injury_type = st.selectbox("What type of injury is this?", INJURY_TYPES, index=0)
-        injury_location = st.selectbox("Where is the injury?", INJURY_LOCATIONS, index=0)
-    with col9:
-        injury_mechanism = st.selectbox("How did it happen?", INJURY_MECHANISMS, index=0)
-    injury_flags = st.multiselect("Are any of these present?", INJURY_FLAGS)
+    if chief == "Injury / wound":
+        st.subheader("Injury / Wound Details")
+        col8, col9 = st.columns(2)
+        with col8:
+            injury_type = st.selectbox("What type of injury is this?", INJURY_TYPES, index=0)
+            injury_location = st.selectbox("Where is the injury?", INJURY_LOCATIONS, index=0)
+        with col9:
+            injury_mechanism = st.selectbox("How did it happen?", INJURY_MECHANISMS, index=0)
+        injury_flags = st.multiselect("Are any of these present?", INJURY_FLAGS)
 
-st.divider()
+    st.divider()
+    submitted = st.form_submit_button("Run Routing")
 
-submitted = st.button("Run Routing", type="primary")
 
 if submitted:
     inputs = {
@@ -430,3 +460,4 @@ if submitted:
         st.json(inputs)
 
 st.caption("Next: add an LLM explanation layer that only summarizes and explains—never routes.")
+
