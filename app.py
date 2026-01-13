@@ -542,7 +542,7 @@ with st.expander("Run preset scenarios (sanity check)"):
                 "injury_location": preset.get("injury_location"),
                 "injury_mechanism": preset.get("injury_mechanism"),
                 "injury_flags": preset.get("injury_flags", []),
-            }
+     }
             res = route_patient(inputs)
             st.write(f"**{name}** → `{res.route}` ({res.urgency})")
 
