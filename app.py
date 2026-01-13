@@ -672,6 +672,18 @@ with st.expander("Run preset scenarios (sanity check)"):
 
 
 if submitted:
+    # --- Ensure injury fields are always defined ---
+    if chief == "Injury / wound":
+        injury_type_out = injury_type
+        injury_location_out = injury_location
+        injury_mechanism_out = injury_mechanism
+        injury_flags_out = injury_flags
+    else:
+        injury_type_out = None
+        injury_location_out = None
+        injury_mechanism_out = None
+        injury_flags_out = []
+
     inputs = {
         "age": int(age),
         "sex": sex,
@@ -684,17 +696,15 @@ if submitted:
         "fever": fever,
         "red_flags": red_flags,
         "conditions": conditions,
-        # optional vitals (already parsed from *_raw fields inside the form)
         "temp_f": temp_f,
         "hr": hr,
         "spo2": spo2,
         "pcp_access": pcp_access,
         "urgent_access": urgent_access,
-        # injury fields (defaults to None / [] if not an injury)
-        "injury_type": injury_type,
-        "injury_location": injury_location,
-        "injury_mechanism": injury_mechanism,
-        "injury_flags": injury_flags,
+        "injury_type": injury_type_out,
+        "injury_location": injury_location_out,
+        "injury_mechanism": injury_mechanism_out,
+        "injury_flags": injury_flags_out,
     }
 
     result = route_patient(inputs)
@@ -719,9 +729,6 @@ if submitted:
         for s in result.safety_notes:
             st.markdown(f"- {s}")
 
-    with st.expander("Debug: inputs JSON"):
-        st.json(inputs)
-
     with st.expander("LLM Explanation (optional)", expanded=True):
         if not llm_enabled():
             st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
@@ -730,6 +737,7 @@ if submitted:
             explanation = generate_llm_explanation(prompt)
             st.write(explanation)
 
+    with st.expander("Debug: inputs JSON"):
+        st.json(inputs)
 
-
-st.caption("Next: add an LLM explanation layer that only summarizes and explains—never routes.")
+st.caption("Next: add export/share functionality (PDF or text) or harden tests.")
