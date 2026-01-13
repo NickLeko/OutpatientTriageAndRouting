@@ -551,7 +551,7 @@ with st.expander("Run preset scenarios (sanity check)"):
 
 
 if submitted:
-    inputs = {
+    inputs = {]
         age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1, key="age")
         sex = st.selectbox("Sex", SEX_OPTIONS, index=0, key="sex")
         pregnant = st.selectbox("Pregnant or could be pregnant?", PREGNANCY_OPTIONS, index=2, key="pregnant")
