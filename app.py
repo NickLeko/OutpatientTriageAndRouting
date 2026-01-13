@@ -223,13 +223,13 @@ def build_explanation_prompt(inputs: Dict[str, Any], routing: RoutingResult) -> 
     """
     Strict prompt: explanation only. Never override route.
     """
-    # Keep input summary tight; avoid dumping full JSON into the prompt.
     red_flags = inputs.get("red_flags", [])
     conditions = inputs.get("conditions", [])
     injury_flags = inputs.get("injury_flags", [])
 
     return f"""
-You are a healthcare navigation assistant. You DO NOT provide diagnoses.
+You are a healthcare navigation assistant.
+You DO NOT diagnose conditions.
 You MUST NOT change or contradict the routing decision.
 
 Routing decision (FINAL): {routing.route}
@@ -242,7 +242,7 @@ User inputs (structured):
 - Pregnant: {inputs.get("pregnant")}
 - Chief complaint: {inputs.get("chief_complaint")}
 - Onset: {inputs.get("onset")}
-- Severity (0-10): {inputs.get("severity_0_10")}
+- Severity (0–10): {inputs.get("severity_0_10")}
 - Trend: {inputs.get("trend")}
 - Happened before: {inputs.get("happened_before")}
 - Fever: {inputs.get("fever")}
@@ -251,14 +251,34 @@ User inputs (structured):
 - Vitals (if known): temp_f={inputs.get("temp_f")}, hr={inputs.get("hr")}, spo2={inputs.get("spo2")}
 - Injury flags (if any): {injury_flags if injury_flags else "None"}
 
-Write a patient-facing explanation with these rules:
-1) Start with: "Recommended care: <ROUTE> (<URGENCY>)" exactly matching the FINAL route.
-2) Briefly explain why, using the rule-based reasons and user inputs (no new facts).
-3) Provide 3-6 bullet "Watch-outs" that should trigger escalation to the ED (generic, safe).
-4) Provide 3-6 bullet "What to do next" steps appropriate for the FINAL route (no prescriptions; OK: OTC basics like hydration/rest).
-5) Include a short disclaimer: this is not medical advice and emergencies should call local emergency services.
-Keep it under 220 words.
+Write a patient-facing explanation with these STRICT rules:
+
+1) Start with:
+   "Recommended care: <ROUTE> (<URGENCY>)"
+   Use the FINAL route exactly as written above.
+
+2) Briefly explain WHY using only the rule-based reasons and user inputs.
+   Do NOT introduce new symptoms, diagnoses, or probabilities.
+
+3) Include a "Watch-outs" section with 4–6 bullets.
+   You MUST include:
+   - Trouble breathing at rest
+   - Signs of stroke (face droop, arm weakness, speech difficulty)
+   - Fainting or near-fainting
+   - Worsening chest pain or pressure
+
+4) Include a "What to do next" section with 3–6 bullets.
+   - Actions must match the FINAL route.
+   - You may suggest basic safety steps (rest, avoid exertion).
+   - If mentioning hydration, qualify it clearly:
+     "If it does not delay care and you are not vomiting."
+
+5) End with a short disclaimer:
+   "This is not medical advice. If this is an emergency, call local emergency services."
+
+Keep the total response under 220 words.
 """.strip()
+
 
 # -----------------------------
 # Routing Logic 
