@@ -855,48 +855,59 @@ if submitted:
             st.write(explanation)
 
     # -------------------------
-    # Export Summary
-    # -------------------------
-    st.subheader("Export Summary")
+# Export Summary
+# -------------------------
+st.subheader("Export Summary")
 
-    # Update patient export call
-  
-    try:
-        patient_txt = format_patient_export(explanation, inputs) if explanation else ""
-    except TypeError:
-        patient_txt = format_patient_export(explanation) if explanation else ""
+# Patient export (handles old/new helper signature)
+try:
+    patient_txt = format_patient_export(explanation, inputs) if explanation else ""
+except TypeError:
+    patient_txt = format_patient_export(explanation) if explanation else ""
 
-    clinician_txt = format_clinician_export(inputs, result)
+clinician_txt = format_clinician_export(inputs, result)
 
-    colA, colB = st.columns(2)
+# Build ZIP share package
+share_zip = build_share_package_zip(
+    encounter_id=encounter_id,
+    patient_txt=patient_txt,
+    clinician_txt=clinician_txt,
+    inputs=inputs,
+)
 
-    with colA:
-        st.markdown("**Patient summary**")
-        if patient_txt:
-            st.download_button(
-                label="Download patient summary (.txt)",
-                data=patient_txt,
-                file_name=f"patient_summary_{encounter_id}.txt",
-                mime="text/plain",
-            )
-            st.code(patient_txt, language="text")
-        else:
-            st.info("No patient summary yet (LLM disabled or unavailable).")
+st.download_button(
+    label="Download Share Package (.zip)",
+    data=share_zip,
+    file_name=f"share_package_{encounter_id}.zip",
+    mime="application/zip",
+)
 
-    with colB:
-        st.markdown("**Clinician summary**")
+colA, colB = st.columns(2)
+
+with colA:
+    st.markdown("**Patient summary**")
+    if patient_txt:
         st.download_button(
-            label="Download clinician summary (.txt)",
-            data=clinician_txt,
-            file_name=f"clinician_summary_{encounter_id}.txt",
+            label="Download patient summary (.txt)",
+            data=patient_txt,
+            file_name=f"patient_summary_{encounter_id}.txt",
             mime="text/plain",
         )
-        st.code(clinician_txt, language="text")
+        st.code(patient_txt, language="text")
+    else:
+        st.info("No patient summary yet (LLM disabled or unavailable).")
 
-    st.caption("Tip: on mobile, press-and-hold text in the boxes to copy, or download the .txt.")
+with colB:
+    st.markdown("**Clinician summary**")
+    st.download_button(
+        label="Download clinician summary (.txt)",
+        data=clinician_txt,
+        file_name=f"clinician_summary_{encounter_id}.txt",
+        mime="text/plain",
+    )
+    st.code(clinician_txt, language="text")
 
-    with st.expander("Debug: inputs JSON"):
-        st.json(inputs)
+st.caption("Tip: on mobile, press-and-hold text in the boxes to copy, or download the .txt.")
 
-st.caption("Next: add routing unit tests + a small test matrix table.")
-
+with st.expander("Debug: inputs JSON"):
+    st.json(inputs)
