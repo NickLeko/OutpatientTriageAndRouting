@@ -848,7 +848,7 @@ if submitted:
     # -------------------------
     explanation = ""  # default for export when LLM disabled/unavailable
 
-    with st.expander("LLM Explanation"), expanded=True):
+    with st.expander("LLM Explanation", expanded=True):
         if not llm_enabled():
             st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
             explanation = ""
