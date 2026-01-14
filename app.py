@@ -746,6 +746,12 @@ with st.expander("Run preset scenarios (sanity check)"):
 
 
 if submitted:
+    # -------------------------
+    # Encounter metadata (new per submit)
+    # -------------------------
+    encounter_id = str(uuid.uuid4())[:8].upper()
+    encounter_ts = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
     # --- Ensure injury fields are always defined ---
     if chief == "Injury / wound":
         injury_type_out = injury_type
@@ -759,6 +765,8 @@ if submitted:
         injury_flags_out = []
 
     inputs = {
+        "encounter_id": encounter_id,
+        "encounter_ts": encounter_ts,
         "age": int(age),
         "sex": sex,
         "pregnant": pregnant,
@@ -784,74 +792,84 @@ if submitted:
     result = route_patient(inputs)
 
     st.subheader("Routing Result")
-if result.route == "ED":
-    st.error(f"Recommended care setting: **{result.route}**")
-elif result.route == "Urgent Care":
-    st.warning(f"Recommended care setting: **{result.route}**")
-elif result.route == "PCP":
-    st.info(f"Recommended care setting: **{result.route}**")
-else:
-    st.success(f"Recommended care setting: **{result.route}**")
+    st.caption(f"Encounter: **{encounter_id}** • **{encounter_ts}**")
 
-st.write(f"**Urgency:** {result.urgency}")
-
-with st.expander("Why (rules-based)"):
-    for r in result.reasons:
-        st.markdown(f"- {r}")
-
-with st.expander("Safety notes"):
-    for s in result.safety_notes:
-        st.markdown(f"- {s}")
-
-# -------------------------
-# LLM Explanation (optional)
-# -------------------------
-explanation = ""  # default for export when LLM disabled/unavailable
-
-with st.expander("LLM Explanation (optional)", expanded=True):
-    if not llm_enabled():
-        st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
+    if result.route == "ED":
+        st.error(f"Recommended care setting: **{result.route}**")
+    elif result.route == "Urgent Care":
+        st.warning(f"Recommended care setting: **{result.route}**")
+    elif result.route == "PCP":
+        st.info(f"Recommended care setting: **{result.route}**")
     else:
-        prompt = build_explanation_prompt(inputs, result)
-        explanation = generate_llm_explanation(prompt)
-        st.write(explanation)
+        st.success(f"Recommended care setting: **{result.route}**")
 
-# -------------------------
-# Export Summary
-# -------------------------
-st.subheader("Export Summary")
+    st.write(f"**Urgency:** {result.urgency}")
 
-patient_txt = format_patient_export(explanation) if explanation else ""
-clinician_txt = format_clinician_export(inputs, result)
+    with st.expander("Why (rules-based)"):
+        for r in result.reasons:
+            st.markdown(f"- {r}")
 
-colA, colB = st.columns(2)
+    with st.expander("Safety notes"):
+        for s in result.safety_notes:
+            st.markdown(f"- {s}")
 
-with colA:
-    st.markdown("**Patient summary**")
-    if patient_txt:
+    # -------------------------
+    # LLM Explanation (optional)
+    # -------------------------
+    explanation = ""  # default for export when LLM disabled/unavailable
+
+    with st.expander("LLM Explanation (optional)", expanded=True):
+        if not llm_enabled():
+            st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
+        else:
+            prompt = build_explanation_prompt(inputs, result)
+            explanation = generate_llm_explanation(prompt)
+            st.write(explanation)
+
+    # -------------------------
+    # Export Summary
+    # -------------------------
+    st.subheader("Export Summary")
+
+    # Update patient export call depending on whether you updated the helper signature
+    # If you updated format_patient_export(explanation, inputs): use that version.
+    # Otherwise, this will still work but won't include encounter metadata.
+    try:
+        patient_txt = format_patient_export(explanation, inputs) if explanation else ""
+    except TypeError:
+        patient_txt = format_patient_export(explanation) if explanation else ""
+
+    clinician_txt = format_clinician_export(inputs, result)
+
+    colA, colB = st.columns(2)
+
+    with colA:
+        st.markdown("**Patient summary**")
+        if patient_txt:
+            st.download_button(
+                label="Download patient summary (.txt)",
+                data=patient_txt,
+                file_name=f"patient_summary_{encounter_id}.txt",
+                mime="text/plain",
+            )
+            st.code(patient_txt, language="text")
+        else:
+            st.info("No patient summary yet (LLM disabled or unavailable).")
+
+    with colB:
+        st.markdown("**Clinician summary**")
         st.download_button(
-            label="Download patient summary (.txt)",
-            data=patient_txt,
-            file_name="patient_summary.txt",
+            label="Download clinician summary (.txt)",
+            data=clinician_txt,
+            file_name=f"clinician_summary_{encounter_id}.txt",
             mime="text/plain",
         )
-        st.code(patient_txt, language="text")
-    else:
-        st.info("No patient summary yet (LLM disabled or unavailable).")
+        st.code(clinician_txt, language="text")
 
-with colB:
-    st.markdown("**Clinician summary**")
-    st.download_button(
-        label="Download clinician summary (.txt)",
-        data=clinician_txt,
-        file_name="clinician_summary.txt",
-        mime="text/plain",
-    )
-    st.code(clinician_txt, language="text")
+    st.caption("Tip: on mobile, press-and-hold text in the boxes to copy, or download the .txt.")
 
-st.caption("Tip: on mobile, press-and-hold text in the boxes to copy, or download the .txt.")
+    with st.expander("Debug: inputs JSON"):
+        st.json(inputs)
 
-with st.expander("Debug: inputs JSON"):
-    st.json(inputs)
+st.caption("Next: add routing unit tests + a small test matrix table.")
 
-st.caption("Next: add encounter ID + timestamp to exports, or harden tests.")
