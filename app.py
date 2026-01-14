@@ -142,11 +142,7 @@ def apply_preset(preset: Dict) -> None:
         st.session_state[k] = v
 
 
-def normalize_conditions(conditions: List[str]) -> List[str]:
-    # If "None of the above" selected, treat as no conditions.
-    if "None of the above" in conditions:
-        return []
-    return conditions
+
 def run_routing_tests() -> List[Dict[str, Any]]:
     """
     Runs a small deterministic test suite against route_patient().
@@ -482,7 +478,6 @@ def route_patient(inputs: Dict) -> RoutingResult:
     fever = inputs.get("fever")
     happened_before = inputs.get("happened_before")
     pregnant = inputs.get("pregnant")
-    conditions = normalize_conditions(inputs.get("conditions", []))
     red_flags = inputs.get("red_flags", [])
     injury_flags = inputs.get("injury_flags", [])
     injury_type = inputs.get("injury_type")
