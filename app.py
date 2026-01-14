@@ -132,8 +132,6 @@ INJURY_FLAGS = [
 # -----------------------------
 # Helpers
 # -----------------------------
-def _is_checked(items: List[str]) -> bool:
-    return bool(items) and len(items) > 0
 
 def apply_preset(preset: Dict) -> None:
     """
