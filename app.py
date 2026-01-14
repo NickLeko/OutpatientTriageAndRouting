@@ -27,6 +27,10 @@ import uuid
 
 from triage.routing import route_patient, RoutingResult
 
+import io
+import json
+import zipfile
+
 
 # -----------------------------
 # Constants / Options
@@ -342,6 +346,33 @@ def format_clinician_export(inputs: Dict[str, Any], result: RoutingResult) -> st
 
     return "\n".join(lines).strip()
 
+def build_share_package_zip(encounter_id, patient_txt, clinician_txt, inputs):
+    """
+    Build a ZIP file (in memory) that contains:
+    - patient summary
+    - clinician summary
+    - raw inputs JSON
+    """
+    buffer = io.BytesIO()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        if patient_txt:
+            zipf.writestr(
+                f"patient_summary_{encounter_id}.txt",
+                patient_txt
+            )
+
+        zipf.writestr(
+            f"clinician_summary_{encounter_id}.txt",
+            clinician_txt
+        )
+
+        zipf.writestr(
+            f"inputs_{encounter_id}.json",
+            json.dumps(inputs, indent=2)
+        )
+
+    return buffer.getvalue()
 
 
 def parse_optional_int(s: str) -> Optional[int]:
