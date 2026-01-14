@@ -1,28 +1,59 @@
-# Triage Routing MVP 
+# Outpatient Triage & Care Routing MVP
 
-A small Streamlit MVP that collects structured intake inputs and returns a deterministic routing recommendation:
-**ED / Urgent Care / PCP / Self-care**.
+![CI](https://github.com/NickLeko/OutpatientTriageAndRouting/actions/workflows/ci.yml/badge.svg)
 
-This is a demo to showcase product + workflow thinking in healthcare triage. It is **not** medical advice.
+## What this is
+Outpatient Triage & Routing is a demo MVP that collects structured symptom and vitals history and returns a **care-setting recommendation**:
 
-## What it does
-- Structured intake form (symptoms, red flags, risk history, optional vitals)
-- Deterministic routing engine (`route_patient`) with explicit reasons
-- Injury/wound branch with conditional questions
-- No LLM in v1 (by design)
+- **ED** (Immediate)
+- **Urgent Care** (Same day)
+- **Primary Care (PCP)** (24–72 hrs)
+- **Self-care** (Monitor)
 
-## Safety stance
-- **Rules decide.** The routing output comes from deterministic logic only.
-- If an LLM layer is added later, it must:
-  - summarize inputs
-  - explain the rule-based routing
-  - list escalation triggers
-  - **never override the route**
+This project is **not medical advice** and does not provide diagnoses.  
+It is intended as a **product and engineering demonstration**, not a consumer medical tool.
 
-## Run locally
+---
+
+## Key design: deterministic routing + LLM explanation (separated)
+This app intentionally separates **decision** from **explanation**:
+
+### 1) Deterministic routing engine (auditable)
+- Implemented as a rule-based function (`triage/routing.py`)
+- Produces: `route`, `urgency`, and explicit `reasons`
+- This is the only component allowed to decide ED vs UC vs PCP vs Self-care
+
+### 2) LLM explanation layer (cannot change routing)
+- Runs *after* routing is decided
+- Receives the finalized route + rule reasons
+- Generates patient-friendly wording only
+- Prompt is explicitly constrained to never contradict the route
+
+This separation is deliberate for safety, debuggability, and product credibility.
+
+---
+
+## Exports
+After submission, the app generates:
+- **Patient summary (.txt)** (LLM explanation)
+- **Clinician summary (.txt)** (structured inputs + routing + reasons)
+- **Share package (.zip)** bundling:
+  - `patient_summary_<encounter>.txt`
+  - `clinician_summary_<encounter>.txt`
+  - `inputs_<encounter>.json`
+
+Each run includes an **Encounter ID + timestamp** for traceability.
+
+---
+
+## Testing & CI
+- **In-app sanity matrix** for rapid regression checks
+- **Pytest unit tests** (`tests/`)
+- **GitHub Actions CI** runs tests on every push and pull request
+
+---
+
+## Run locally (optional)
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
-
-
-![CI](https://github.com/<your-username>/<repo-name>/actions/workflows/ci.yml/badge.svg)
