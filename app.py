@@ -22,6 +22,9 @@ try:
 except ImportError:
     OpenAI = None
 
+from datetime import datetime, timezone
+import uuid
+
 
 # -----------------------------
 # Constants / Options
@@ -164,26 +167,40 @@ def parse_optional_float(s: str) -> Optional[float]:
         return float(s)
     except ValueError:
         return None
-def format_patient_export(explanation: str) -> str:
-    return (explanation or "").strip()
+def format_patient_export(explanation: str, inputs: Dict[str, Any]) -> str:
+    header = [
+        "PATIENT SUMMARY (MVP DEMO — NOT MEDICAL ADVICE)",
+        f"Encounter ID: {inputs.get('encounter_id')}",
+        f"Timestamp: {inputs.get('encounter_ts')}",
+        "",
+    ]
+    return ("\n".join(header) + (explanation or "").strip()).strip()
 
 
 def format_clinician_export(inputs: Dict[str, Any], result: RoutingResult) -> str:
+    """
+    Clinician-facing structured summary.
+    Deterministic, auditable, no LLM prose.
+    """
+
     red_flags = inputs.get("red_flags") or []
     conditions = inputs.get("conditions") or []
     injury_flags = inputs.get("injury_flags") or []
 
     lines = [
         "CLINICIAN SUMMARY (MVP DEMO — NOT MEDICAL ADVICE)",
+        f"Encounter ID: {inputs.get('encounter_id')}",
+        f"Timestamp: {inputs.get('encounter_ts')}",
         "",
         f"Recommended care: {result.route} ({result.urgency})",
         "",
         "Rule-based reasons:",
     ]
+
     if result.reasons:
-        lines.extend([f"- {r}" for r in result.reasons])
+        lines.extend([f"- {reason}" for reason in result.reasons])
     else:
-        lines.append("- (none)")
+        lines.append("- None")
 
     lines.extend(
         [
@@ -201,12 +218,18 @@ def format_clinician_export(inputs: Dict[str, Any], result: RoutingResult) -> st
             f"- Red flags selected: {red_flags if red_flags else 'None'}",
             f"- Conditions selected: {conditions if conditions else 'None'}",
             f"- Vitals (if known): temp_f={inputs.get('temp_f')}, hr={inputs.get('hr')}, spo2={inputs.get('spo2')}",
-            f"- Injury flags (if any): {injury_flags if injury_flags else 'None'}",
+            f"- Injury type: {inputs.get('injury_type') or 'None'}",
+            f"- Injury location: {inputs.get('injury_location') or 'None'}",
+            f"- Injury mechanism: {inputs.get('injury_mechanism') or 'None'}",
+            f"- Injury flags: {injury_flags if injury_flags else 'None'}",
             "",
-            "Disclaimer: This output is for demonstration only and is not medical advice.",
+            "Disclaimer:",
+            "This summary is generated for demonstration purposes only and is not medical advice.",
         ]
     )
+
     return "\n".join(lines).strip()
+
 
 
 def parse_optional_int(s: str) -> Optional[int]:
@@ -831,9 +854,8 @@ if submitted:
     # -------------------------
     st.subheader("Export Summary")
 
-    # Update patient export call depending on whether you updated the helper signature
-    # If you updated format_patient_export(explanation, inputs): use that version.
-    # Otherwise, this will still work but won't include encounter metadata.
+    # Update patient export call
+  
     try:
         patient_txt = format_patient_export(explanation, inputs) if explanation else ""
     except TypeError:
