@@ -23,3 +23,6 @@ This is a demo to showcase product + workflow thinking in healthcare triage. It 
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
+
+
+![CI](https://github.com/<your-username>/<repo-name>/actions/workflows/ci.yml/badge.svg)
