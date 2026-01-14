@@ -871,6 +871,22 @@ if submitted:
 
     clinician_txt = format_clinician_export(inputs, result)
 
+    # --- Share Package Preview ---
+    st.markdown("**Share package contents**")
+    
+    has_patient = bool(patient_txt.strip())
+    has_clinician = bool(clinician_txt.strip())
+    has_inputs = bool(inputs)
+    
+    preview_rows = [
+        {"File": f"patient_summary_{encounter_id}.txt", "Included": "✅" if has_patient else "❌ (LLM off)"},
+        {"File": f"clinician_summary_{encounter_id}.txt", "Included": "✅" if has_clinician else "❌"},
+        {"File": f"inputs_{encounter_id}.json", "Included": "✅" if has_inputs else "❌"},
+]
+
+    st.table(preview_rows)
+
+
     # Build ZIP share package
     share_zip = build_share_package_zip(
         encounter_id=encounter_id,
