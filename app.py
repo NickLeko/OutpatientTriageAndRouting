@@ -835,7 +835,7 @@ if submitted:
 
     st.write(f"**Urgency:** {result.urgency}")
 
-    with st.expander("Why (rules-based)"):
+    with st.expander("Why"):
         for r in result.reasons:
             st.markdown(f"- {r}")
 
