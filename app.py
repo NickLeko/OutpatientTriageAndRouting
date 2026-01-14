@@ -164,6 +164,49 @@ def parse_optional_float(s: str) -> Optional[float]:
         return float(s)
     except ValueError:
         return None
+def format_patient_export(explanation: str) -> str:
+    return (explanation or "").strip()
+
+
+def format_clinician_export(inputs: Dict[str, Any], result: RoutingResult) -> str:
+    red_flags = inputs.get("red_flags") or []
+    conditions = inputs.get("conditions") or []
+    injury_flags = inputs.get("injury_flags") or []
+
+    lines = [
+        "CLINICIAN SUMMARY (MVP DEMO — NOT MEDICAL ADVICE)",
+        "",
+        f"Recommended care: {result.route} ({result.urgency})",
+        "",
+        "Rule-based reasons:",
+    ]
+    if result.reasons:
+        lines.extend([f"- {r}" for r in result.reasons])
+    else:
+        lines.append("- (none)")
+
+    lines.extend(
+        [
+            "",
+            "Structured inputs:",
+            f"- Age: {inputs.get('age')}",
+            f"- Sex: {inputs.get('sex')}",
+            f"- Pregnant: {inputs.get('pregnant')}",
+            f"- Chief complaint: {inputs.get('chief_complaint')}",
+            f"- Onset: {inputs.get('onset')}",
+            f"- Severity (0–10): {inputs.get('severity_0_10')}",
+            f"- Trend: {inputs.get('trend')}",
+            f"- Happened before: {inputs.get('happened_before')}",
+            f"- Fever: {inputs.get('fever')}",
+            f"- Red flags selected: {red_flags if red_flags else 'None'}",
+            f"- Conditions selected: {conditions if conditions else 'None'}",
+            f"- Vitals (if known): temp_f={inputs.get('temp_f')}, hr={inputs.get('hr')}, spo2={inputs.get('spo2')}",
+            f"- Injury flags (if any): {injury_flags if injury_flags else 'None'}",
+            "",
+            "Disclaimer: This output is for demonstration only and is not medical advice.",
+        ]
+    )
+    return "\n".join(lines).strip()
 
 
 def parse_optional_int(s: str) -> Optional[int]:
@@ -741,34 +784,74 @@ if submitted:
     result = route_patient(inputs)
 
     st.subheader("Routing Result")
-    if result.route == "ED":
-        st.error(f"Recommended care setting: **{result.route}**")
-    elif result.route == "Urgent Care":
-        st.warning(f"Recommended care setting: **{result.route}**")
-    elif result.route == "PCP":
-        st.info(f"Recommended care setting: **{result.route}**")
+if result.route == "ED":
+    st.error(f"Recommended care setting: **{result.route}**")
+elif result.route == "Urgent Care":
+    st.warning(f"Recommended care setting: **{result.route}**")
+elif result.route == "PCP":
+    st.info(f"Recommended care setting: **{result.route}**")
+else:
+    st.success(f"Recommended care setting: **{result.route}**")
+
+st.write(f"**Urgency:** {result.urgency}")
+
+with st.expander("Why (rules-based)"):
+    for r in result.reasons:
+        st.markdown(f"- {r}")
+
+with st.expander("Safety notes"):
+    for s in result.safety_notes:
+        st.markdown(f"- {s}")
+
+# -------------------------
+# LLM Explanation (optional)
+# -------------------------
+explanation = ""  # default for export when LLM disabled/unavailable
+
+with st.expander("LLM Explanation (optional)", expanded=True):
+    if not llm_enabled():
+        st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
     else:
-        st.success(f"Recommended care setting: **{result.route}**")
+        prompt = build_explanation_prompt(inputs, result)
+        explanation = generate_llm_explanation(prompt)
+        st.write(explanation)
 
-    st.write(f"**Urgency:** {result.urgency}")
+# -------------------------
+# Export Summary
+# -------------------------
+st.subheader("Export Summary")
 
-    with st.expander("Why (rules-based)"):
-        for r in result.reasons:
-            st.markdown(f"- {r}")
+patient_txt = format_patient_export(explanation) if explanation else ""
+clinician_txt = format_clinician_export(inputs, result)
 
-    with st.expander("Safety notes"):
-        for s in result.safety_notes:
-            st.markdown(f"- {s}")
+colA, colB = st.columns(2)
 
-    with st.expander("LLM Explanation (optional)", expanded=True):
-        if not llm_enabled():
-            st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
-        else:
-            prompt = build_explanation_prompt(inputs, result)
-            explanation = generate_llm_explanation(prompt)
-            st.write(explanation)
+with colA:
+    st.markdown("**Patient summary**")
+    if patient_txt:
+        st.download_button(
+            label="Download patient summary (.txt)",
+            data=patient_txt,
+            file_name="patient_summary.txt",
+            mime="text/plain",
+        )
+        st.code(patient_txt, language="text")
+    else:
+        st.info("No patient summary yet (LLM disabled or unavailable).")
 
-    with st.expander("Debug: inputs JSON"):
-        st.json(inputs)
+with colB:
+    st.markdown("**Clinician summary**")
+    st.download_button(
+        label="Download clinician summary (.txt)",
+        data=clinician_txt,
+        file_name="clinician_summary.txt",
+        mime="text/plain",
+    )
+    st.code(clinician_txt, language="text")
 
-st.caption("Next: add export/share functionality (PDF or text) or harden tests.")
+st.caption("Tip: on mobile, press-and-hold text in the boxes to copy, or download the .txt.")
+
+with st.expander("Debug: inputs JSON"):
+    st.json(inputs)
+
+st.caption("Next: add encounter ID + timestamp to exports, or harden tests.")
