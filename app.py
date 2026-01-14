@@ -817,6 +817,8 @@ if submitted:
         "injury_flags": injury_flags_out,
     }
 
+    explanation = ""
+
     result = route_patient(inputs)
 
     st.subheader("Routing Result")
@@ -846,13 +848,15 @@ if submitted:
     # -------------------------
     explanation = ""  # default for export when LLM disabled/unavailable
 
-    with st.expander("LLM Explanation", expanded=True):
+    with st.expander("LLM Explanation (optional)", expanded=True):
         if not llm_enabled():
             st.info("LLM is disabled. Set `OPENAI_API_KEY` in your environment to enable explanations.")
+            explanation = ""
         else:
             prompt = build_explanation_prompt(inputs, result)
             explanation = generate_llm_explanation(prompt)
             st.write(explanation)
+
 
     # -------------------------
 # Export Summary
