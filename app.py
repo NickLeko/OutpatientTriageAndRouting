@@ -25,6 +25,8 @@ except ImportError:
 from datetime import datetime, timezone
 import uuid
 
+from triage.routing import route_patient, RoutingResult
+
 
 # -----------------------------
 # Constants / Options
