@@ -128,16 +128,6 @@ INJURY_FLAGS = [
 ]
 
 
-# -----------------------------
-# Data Models
-# -----------------------------
-@dataclass
-class RoutingResult:
-    route: str                 # "ED" | "Urgent Care" | "PCP" | "Self-care"
-    urgency: str               # "Immediate" | "Same day" | "24–72 hrs" | "Monitor"
-    reasons: List[str]         # machine-readable justifications (not LLM)
-    safety_notes: List[str]    # watch-outs / escalation triggers
-
 
 # -----------------------------
 # Helpers
