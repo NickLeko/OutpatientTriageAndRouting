@@ -1,7 +1,5 @@
 # Outpatient Triage & Care Routing MVP
 
-![CI](https://github.com/NickLeko/OutpatientTriageAndRouting/actions/workflows/ci.yml/badge.svg)
-
 ## What this is
 Outpatient Triage & Routing is a demo MVP that collects structured symptom and vitals history and returns a **care-setting recommendation**:
 
