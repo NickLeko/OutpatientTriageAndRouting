@@ -57,3 +57,10 @@ Each run includes an **Encounter ID + timestamp** for traceability.
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
+
+
+## Data & Privacy Notes
+- This prototype is intended for **demonstration with synthetic/example data only**
+- Do **not** enter real patient identifiers or protected health information (PHI)
+- No persistence, EHR integration, or clinical validation is implemented
+
